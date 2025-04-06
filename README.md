@@ -1,0 +1,1 @@
+# LLM_Powered-RAG-based-Document-Coparison-Tool-AzureFriendly
