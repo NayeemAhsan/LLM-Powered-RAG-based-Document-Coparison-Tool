@@ -1,5 +1,5 @@
 doc_intelligence:
   custom_models:
-    custom_insurance_model_1: 5643b277-4d45-493f-92ad-5e51e3696686
+    custom_insurance_model_1: 
 app:
   upload_folder: src/app/uploads

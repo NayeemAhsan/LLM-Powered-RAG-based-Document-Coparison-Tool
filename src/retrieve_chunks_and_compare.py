@@ -5,7 +5,7 @@ import bitsandbytes as bnb
 from sklearn.metrics.pairwise import cosine_similarity
 
 # Load the LLaMA model and tokenizer
-model_name = "/home/mnahsan21/.llama/checkpoints/Llama-2-7B"  # Correct absolute path
+model_name = "/home/~/.llama/checkpoints/Llama-2-7B"  # Correct absolute path
 tokenizer = AutoTokenizer.from_pretrained(model_name, local_files_only=True)
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
