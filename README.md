@@ -1,4 +1,4 @@
-# LLM-Powered RAG-Based Document Comparison Tool (Azure-Friendly)
+# LLM-Powered RAG-Based Document Comparison Tool
 
 This project is a **Retrieval-Augmented Generation (RAG)**-based document comparison tool powered by **Large Language Models (LLMs)** and **Azure Cognitive Services**. It enables users to analyze, chunk, embed, and compare documents, leveraging Azure's AI capabilities for document intelligence and search.
 
