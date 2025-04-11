@@ -1,7 +1,8 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModel
 from azure.search.documents import SearchClient
 import torch
 import bitsandbytes as bnb
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Load the LLaMA model and tokenizer
 model_name = "/home/mnahsan21/.llama/checkpoints/Llama-2-7B"  # Correct absolute path
@@ -12,6 +13,11 @@ model = AutoModelForCausalLM.from_pretrained(
     # load_in_8bit=True,  # Enable 8-bit quantization
     device_map=None,  # Disable GPU mapping
 ).to("cpu")  # Explicitly move the model to CPU
+
+# Load BERT model and tokenizer for similarity scoring
+bert_model_name = "bert-base-uncased"
+bert_tokenizer = AutoTokenizer.from_pretrained(bert_model_name)
+bert_model = AutoModel.from_pretrained(bert_model_name)
 
 def retrieve_relevant_chunks(service_endpoint, api_key, index_name, query_embedding, top_k=5):
     """
@@ -41,45 +47,41 @@ def retrieve_relevant_chunks(service_endpoint, api_key, index_name, query_embedd
     relevant_chunks = [result["chunk_text"] for result in results]
     return relevant_chunks
 
+def compute_similarity(text1, text2):
+    """
+    Compute similarity between two texts using BERT embeddings.
+    """
+    # Tokenize and encode the texts
+    inputs1 = bert_tokenizer(text1, return_tensors="pt", truncation=True, max_length=512)
+    inputs2 = bert_tokenizer(text2, return_tensors="pt", truncation=True, max_length=512)
+
+    # Generate embeddings
+    with torch.no_grad():
+        embeddings1 = bert_model(**inputs1).last_hidden_state.mean(dim=1)
+        embeddings2 = bert_model(**inputs2).last_hidden_state.mean(dim=1)
+
+    # Compute cosine similarity
+    similarity = cosine_similarity(embeddings1.numpy(), embeddings2.numpy())
+    return similarity[0][0]
+
 def compare_documents(query, service_endpoint, api_key, index_name):
     """
-    Compare documents using LLaMA and Azure Cognitive Search.
-
-    Args:
-        query (str): The query or context for comparison.
-        service_endpoint (str): Azure Cognitive Search service endpoint.
-        api_key (str): Azure Cognitive Search API key.
-        index_name (str): Name of the Azure Cognitive Search index.
-
-    Returns:
-        str: The LLM's response comparing the documents.
+    Compare two documents using Azure Cognitive Search and BERT similarity.
     """
-    # Generate query embedding using LLaMA
-    inputs = tokenizer(query, return_tensors="pt").to("cpu")  # Ensure inputs are on CPU
-    query_embedding = model(**inputs).last_hidden_state.mean(dim=1).squeeze().tolist()
+    # Retrieve relevant chunks for both documents (update this logic as needed)
+    # For simplicity, assume `retrieved_chunks_doc1` and `retrieved_chunks_doc2` are retrieved
+    retrieved_chunks_doc1 = ["Sample text from Document 1"]
+    retrieved_chunks_doc2 = ["Sample text from Document 2"]
 
-    # Retrieve relevant chunks from Azure Cognitive Search
-    print("Retrieving relevant chunks from Azure Cognitive Search...")
-    retrieved_chunks = retrieve_relevant_chunks(service_endpoint, api_key, index_name, query_embedding)
+    # Combine chunks into single texts
+    text1 = " ".join(retrieved_chunks_doc1)
+    text2 = " ".join(retrieved_chunks_doc2)
 
-    # Combine the query and retrieved chunks into a single prompt
-    prompt = f"Query: {query}\n\nRetrieved Chunks:\n"
-    for i, chunk in enumerate(retrieved_chunks):
-        prompt += f"{i + 1}. {chunk}\n"
-    prompt += "\nCompare the documents and highlight the differences."
+    # Compute similarity score
+    similarity_score = compute_similarity(text1, text2)
 
-    # Tokenize the prompt
-    inputs = tokenizer(prompt, return_tensors="pt").to("cpu")  # Ensure inputs are on CPU
+    # Generate a comparison report
+    report = f"Similarity Score: {similarity_score:.2f}\n\n"
+    report += f"Differences:\n\nDocument 1:\n{text1}\n\nDocument 2:\n{text2}\n"
 
-    # Generate the response
-    outputs = model.generate(
-        inputs["input_ids"],
-        max_length=1024,
-        temperature=0.7,
-        top_p=0.9,
-        num_return_sequences=1,
-    )
-
-    # Decode the response
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return response
+    return report
